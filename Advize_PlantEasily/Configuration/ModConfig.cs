@@ -194,7 +194,7 @@ sealed class ModConfig
         keyboardModifierKey.SettingChanged += KeybindsChanged;
         gamepadModifierKey.SettingChanged += KeybindsChanged;
         keyboardHarvestModifierKey.SettingChanged += KeybindsChanged;
-        showGridDirections.SettingChanged += (_, _) => GhostGrid.DirectionRenderer?.SetActive(false);
+        showGridDirections.SettingChanged += (_, _) => GhostGridRectangular.Instance.DirectionRenderer?.SetActive(false);
         rowStartColor.SettingChanged += GridColorChanged;
         rowEndColor.SettingChanged += GridColorChanged;
         columnStartColor.SettingChanged += GridColorChanged;

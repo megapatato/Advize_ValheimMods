@@ -5,41 +5,37 @@ using UnityEngine;
 using static ModContext;
 using static PlacementState;
 
-internal static class GhostGrid
+internal abstract class GhostGrid
 {
-    internal static readonly List<GameObject> ExtraGhosts = [];
-    internal static readonly List<GameObject> ValidExtraGhosts = [];
-    internal static readonly List<Status> GhostPlacementStatus = [];
+    internal readonly List<GameObject> ExtraGhosts = [];
+    internal readonly List<GameObject> ValidExtraGhosts = [];
+    internal readonly List<Status> GhostPlacementStatus = [];
 
-    internal static GameObject DirectionRenderer;
-    internal static List<LineRenderer> LineRenderers = [];
+    internal GameObject DirectionRenderer;
+    internal List<LineRenderer> LineRenderers = [];
 
-    private static readonly int ghostLayer = LayerMask.NameToLayer("ghost");
+    protected readonly int ghostLayer = LayerMask.NameToLayer("ghost");
 
-    private static int _gridVersion;
-    private static int _ghostUpdateIndex;
+    protected int _gridVersion;
+    protected int _ghostUpdateIndex;
 
-    private static Vector3 _lastBasePosition;
-    private static Quaternion _lastBaseRotation;
-    private static Quaternion _lastEffectiveRotation;
-    private static int _lastRows;
-    private static int _lastColumns;
-    private static string _lastPieceName;
-    private static bool _preservePool;
+    protected Vector3 _lastBasePosition;
+    protected Quaternion _lastBaseRotation;
+    protected Quaternion _lastEffectiveRotation;
 
-    internal static int MaxActiveGhosts => Mathf.Min(config.Rows * config.Columns - 1, config.MaxConcurrentPlacements - 1);
-    private static int TotalCells => 1 + MaxActiveGhosts;
-    private static int ActualRows => (TotalCells + config.Columns - 1) / config.Columns;
-    private static int ActualColumns => Mathf.Min(config.Columns, TotalCells);
+    protected string _lastPieceName;
+    protected bool _preservePool;
 
-    internal static void ResizeGrid()
+    internal abstract int MaxActiveGhosts { get; }
+
+    internal void ResizeGrid()
     {
         _preservePool = true;
         // Not the cleanest, but this next part triggers UpdatePlacementGhost to re-invoke SetupPlacementGhost which calls PrepareGhostPool followed by BuildGrid()
         GhostPlacementStatus.Clear();
     }
 
-    internal static void BuildGrid(GameObject rootGhost)
+    internal void BuildGrid(GameObject rootGhost)
     {
         //Dbgl("BuildGrid");
         GrowPoolIfNeeded(rootGhost);
@@ -51,7 +47,7 @@ internal static class GhostGrid
         DeactivateExcessGhosts();
     }
 
-    internal static void PrepareGhostPool(GameObject currentPlacementGhost)
+    internal void PrepareGhostPool(GameObject currentPlacementGhost)
     {
         //Dbgl("PrepareGhostPool");
         DirectionRenderer?.SetActive(false);
@@ -68,8 +64,8 @@ internal static class GhostGrid
 
         DestroyExtraGhosts();
     }
-
-    private static void GrowPoolIfNeeded(GameObject rootGhost)
+    
+    protected void GrowPoolIfNeeded(GameObject rootGhost)
     {
         //Dbgl("GrowPoolIfNeeded");
         int poolSize = ExtraGhosts.Count;
@@ -92,7 +88,140 @@ internal static class GhostGrid
         }
     }
 
-    private static void InitializeGhosts(GameObject rootGhost)
+    protected abstract void InitializeGhosts(GameObject rootGhost);
+
+    protected void DeactivateExcessGhosts()
+    {
+        //Dbgl("DeactivateExcessGhosts");
+        for (int i = MaxActiveGhosts; i < ExtraGhosts.Count; i++)
+            ExtraGhosts[i].SetActive(false);
+    }
+
+    protected void DetectPieceChange(GameObject currentPlacementGhost)
+    {
+        if (!currentPlacementGhost)
+            return;
+
+        string currentPieceName = currentPlacementGhost.name;
+
+        // First time init
+        if (string.IsNullOrEmpty(_lastPieceName))
+        {
+            _lastPieceName = currentPieceName;
+            return;
+        }
+
+        if (currentPieceName == _lastPieceName)
+        {
+            //Dbgl($"No piece change: {_lastPieceName} : {currentPieceName}");
+            _preservePool = true;
+            return;
+        }
+
+        //Dbgl($"Detected piece change: from {_lastPieceName} to {currentPieceName}");
+        _lastPieceName = currentPieceName;
+    }
+
+    protected bool ShouldPreservePool()
+    {
+        if (!_preservePool || !config.ModActive)
+            return false;
+
+        _preservePool = false;
+        return true;
+    }
+
+    protected void DestroyExtraGhosts()
+    {
+        foreach (GameObject ghost in ExtraGhosts)
+            Object.Destroy(ghost);
+
+        ExtraGhosts.Clear();
+    }
+
+    protected void UpdatePieceCost(Piece piece, int ghostIndex, int baseCost)
+    {
+        piece.m_resources[0].m_amount = baseCost * (ghostIndex + 1);
+    }
+
+    protected void UpdateVisibility()
+    {
+        bool active = PlacementGhost && PlacementGhost.activeSelf;
+
+        for (int i = 0; i < ExtraGhosts.Count; i++)
+        {
+            bool shouldBeActive = active && i < MaxActiveGhosts;
+
+            if (ExtraGhosts[i].activeSelf != shouldBeActive)
+                ExtraGhosts[i].SetActive(shouldBeActive);
+        }
+    }
+
+    protected GameObject GetGhostObject(int index)
+    {
+        return index == 0 ? PlacementGhost : ExtraGhosts[index - 1];
+    }
+
+    protected GhostCache GetGhostCache(GameObject ghost)
+    {
+        return ghost == PlacementGhost ? null : ghost.GetComponent<GhostCache>();
+    }
+
+    protected void UpdateGhostTransform(GameObject ghost, Vector3 position)
+    {
+        ghost.transform.position = position;
+        ghost.transform.rotation = BaseRotation;
+    }
+
+    protected void UpdateGhostStatus(Player player, Piece piece, GameObject ghost, int index)
+    {
+        Status baseStatus =
+            !player.m_noPlacementCost && !player.HaveRequirements(piece, Player.RequirementMode.CanBuild)
+                ? Status.LackResources
+                : Status.Healthy;
+
+        Status finalStatus = GhostStatus.EvaluateStatus(ghost, baseStatus);
+
+        ghost.GetComponent<Piece>().SetInvalidPlacementHeightlight(finalStatus != Status.Healthy);
+
+        GhostPlacementStatus[index] = finalStatus;
+
+        if (index == 0 && finalStatus == Status.Healthy)
+        {
+            if (config.HighlightRootPlacementGhost && GhostPlacementStatus.Count > 1)
+            {
+                MaterialMan.instance.SetValue(ghost, ShaderProps._Color, config.RootGhostHighlightColor);
+                MaterialMan.instance.SetValue(ghost, ShaderProps._EmissionColor, config.RootGhostHighlightColor * 0.7f);
+            }
+
+            player.m_placementStatus = 0;
+        }
+    }
+}
+
+internal sealed class GhostGridRectangular : GhostGrid
+{
+    private static readonly GhostGridRectangular instance = new();
+
+    private GhostGridRectangular() { }
+
+    public static GhostGridRectangular Instance 
+    { 
+        get 
+        {
+            return instance;
+        } 
+    }
+
+    internal override int MaxActiveGhosts => Mathf.Min(config.Rows * config.Columns - 1, config.MaxConcurrentPlacements - 1);
+    private int TotalCells => 1 + MaxActiveGhosts;
+    private int ActualRows => (TotalCells + config.Columns - 1) / config.Columns;
+    private int ActualColumns => Mathf.Min(config.Columns, TotalCells);
+
+    private static int _lastRows;
+    private static int _lastColumns;
+
+    protected override void InitializeGhosts(GameObject rootGhost)
     {
         Transform rootTransform = rootGhost.transform;
         int index = 0;
@@ -124,56 +253,7 @@ internal static class GhostGrid
         }
     }
 
-    private static void DeactivateExcessGhosts()
-    {
-        //Dbgl("DeactivateExcessGhosts");
-        for (int i = MaxActiveGhosts; i < ExtraGhosts.Count; i++)
-            ExtraGhosts[i].SetActive(false);
-    }
-
-    private static void DetectPieceChange(GameObject currentPlacementGhost)
-    {
-        if (!currentPlacementGhost)
-            return;
-
-        string currentPieceName = currentPlacementGhost.name;
-
-        // First time init
-        if (string.IsNullOrEmpty(_lastPieceName))
-        {
-            _lastPieceName = currentPieceName;
-            return;
-        }
-
-        if (currentPieceName == _lastPieceName)
-        {
-            //Dbgl($"No piece change: {_lastPieceName} : {currentPieceName}");
-            _preservePool = true;
-            return;
-        }
-
-        //Dbgl($"Detected piece change: from {_lastPieceName} to {currentPieceName}");
-        _lastPieceName = currentPieceName;
-    }
-
-    private static bool ShouldPreservePool()
-    {
-        if (!_preservePool || !config.ModActive)
-            return false;
-
-        _preservePool = false;
-        return true;
-    }
-
-    private static void DestroyExtraGhosts()
-    {
-        foreach (GameObject ghost in ExtraGhosts)
-            Object.Destroy(ghost);
-
-        ExtraGhosts.Clear();
-    }
-
-    internal static void Update(Player player)
+    internal void Update(Player player)
     {
         UpdateVisibility();
 
@@ -212,25 +292,7 @@ internal static class GhostGrid
         UpdatePieceCost(piece, 0, baseCost);
     }
 
-    private static void UpdatePieceCost(Piece piece, int ghostIndex, int baseCost)
-    {
-        piece.m_resources[0].m_amount = baseCost * (ghostIndex + 1);
-    }
-
-    private static void UpdateVisibility()
-    {
-        bool active = PlacementGhost && PlacementGhost.activeSelf;
-
-        for (int i = 0; i < ExtraGhosts.Count; i++)
-        {
-            bool shouldBeActive = active && i < MaxActiveGhosts;
-
-            if (ExtraGhosts[i].activeSelf != shouldBeActive)
-                ExtraGhosts[i].SetActive(shouldBeActive);
-        }
-    }
-
-    private static void ShowGridDirections()
+    private void ShowGridDirections()
     {
         DirectionRenderer.SetActive(PlacementGhost.activeSelf);
         Vector3 vertex = BasePosition + Vector3.up * 0.5f;
@@ -241,7 +303,7 @@ internal static class GhostGrid
         LineRenderers[2].SetPositions([vertex, vertex + SnapDirection * RowDirection.magnitude]);
     }
 
-    private static void UpdateGridVersion()
+    private void UpdateGridVersion()
     {
         bool changed = false;
 
@@ -275,7 +337,7 @@ internal static class GhostGrid
             _gridVersion++;
     }
 
-    private static void UpdateGhost(Player player, Piece piece, int row, int column, int index)
+    private void UpdateGhost(Player player, Piece piece, int row, int column, int index)
     {
         GameObject ghost = GetGhostObject(index);
         GhostCache cache = GetGhostCache(ghost);
@@ -291,17 +353,7 @@ internal static class GhostGrid
         if (hasCache)
             cache.lastUpdatedVersion = _gridVersion;
     }
-
-    private static GameObject GetGhostObject(int index)
-    {
-        return index == 0 ? PlacementGhost : ExtraGhosts[index - 1];
-    }
-
-    private static GhostCache GetGhostCache(GameObject ghost)
-    {
-        return ghost == PlacementGhost ? null : ghost.GetComponent<GhostCache>();
-    }
-
+    
     private static Vector3 GetGhostPosition(int row, int column, int index)
     {
         Vector3 pos = index == 0 ? BasePosition : BasePosition + RowDirection * row + ColumnDirection * column;
@@ -310,36 +362,22 @@ internal static class GhostGrid
         pos.y = height;
 
         return pos;
-    }
+    }    
+}
 
-    private static void UpdateGhostTransform(GameObject ghost, Vector3 position)
+/*
+internal sealed class GhostGridTriangular : GhostGrid
+{
+    private static readonly GhostGridTriangular instance = new();
+
+    private GhostGridTriangular() { }
+
+    public static GhostGridTriangular Instance
     {
-        ghost.transform.position = position;
-        ghost.transform.rotation = BaseRotation;
-    }
-
-    private static void UpdateGhostStatus(Player player, Piece piece, GameObject ghost, int index)
-    {
-        Status baseStatus =
-            !player.m_noPlacementCost && !player.HaveRequirements(piece, Player.RequirementMode.CanBuild)
-                ? Status.LackResources
-                : Status.Healthy;
-
-        Status finalStatus = GhostStatus.EvaluateStatus(ghost, baseStatus);
-
-        ghost.GetComponent<Piece>().SetInvalidPlacementHeightlight(finalStatus != Status.Healthy);
-
-        GhostPlacementStatus[index] = finalStatus;
-
-        if (index == 0 && finalStatus == Status.Healthy)
+        get
         {
-            if (config.HighlightRootPlacementGhost && GhostPlacementStatus.Count > 1)
-            {
-                MaterialMan.instance.SetValue(ghost, ShaderProps._Color, config.RootGhostHighlightColor);
-                MaterialMan.instance.SetValue(ghost, ShaderProps._EmissionColor, config.RootGhostHighlightColor * 0.7f);
-            }
-
-            player.m_placementStatus = 0;
+            return instance;
         }
     }
 }
+*/
