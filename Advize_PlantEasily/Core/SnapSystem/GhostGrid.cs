@@ -1,5 +1,6 @@
 ﻿namespace Advize_PlantEasily;
 
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using static ModContext;
@@ -74,7 +75,7 @@ internal abstract class GhostGrid
         while (poolSize < MaxActiveGhosts && poolSize < config.MaxConcurrentPlacements - 1)
         {
             ZNetView.m_forceDisableInit = true;
-            GameObject newGhost = Object.Instantiate(rootGhost);
+            GameObject newGhost = UnityEngine.Object.Instantiate(rootGhost);
             newGhost.AddComponent<GhostCache>().Init();
             ZNetView.m_forceDisableInit = false;
 
@@ -134,10 +135,12 @@ internal abstract class GhostGrid
     protected void DestroyExtraGhosts()
     {
         foreach (GameObject ghost in ExtraGhosts)
-            Object.Destroy(ghost);
+            UnityEngine.Object.Destroy(ghost);
 
         ExtraGhosts.Clear();
     }
+
+    internal abstract void Update(Player player);
 
     protected void UpdatePieceCost(Piece piece, int ghostIndex, int baseCost)
     {
@@ -197,6 +200,22 @@ internal abstract class GhostGrid
             player.m_placementStatus = 0;
         }
     }
+
+    internal static GhostGrid Instance
+    {
+        get
+        {
+            switch (config.GridType)
+            {
+                case GridType.Triangular:
+                case GridType.Hexagonal:
+                    throw new NotImplementedException();
+                case GridType.Rectangular:
+                default:
+                    return GhostGridRectangular.Instance;
+            }
+        }
+    }
 }
 
 internal sealed class GhostGridRectangular : GhostGrid
@@ -205,7 +224,7 @@ internal sealed class GhostGridRectangular : GhostGrid
 
     private GhostGridRectangular() { }
 
-    public static GhostGridRectangular Instance 
+    public static new GhostGridRectangular Instance 
     { 
         get 
         {
@@ -253,7 +272,7 @@ internal sealed class GhostGridRectangular : GhostGrid
         }
     }
 
-    internal void Update(Player player)
+    internal override void Update(Player player)
     {
         UpdateVisibility();
 
@@ -381,3 +400,9 @@ internal sealed class GhostGridTriangular : GhostGrid
     }
 }
 */
+
+enum GridType : int {
+    Rectangular = 0,
+    Triangular = 1,
+    Hexagonal = 11,
+}

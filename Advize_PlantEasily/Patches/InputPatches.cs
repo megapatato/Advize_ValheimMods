@@ -56,6 +56,8 @@ static class InputPatches
             if (CheckAndApply(() => ZInput.GetKeyDown(config.IncreaseYKey, false), () => config.Rows++)) return;
             if (CheckAndApply(() => ZInput.GetKeyDown(config.DecreaseXKey, false), () => config.Columns--)) return;
             if (CheckAndApply(() => ZInput.GetKeyDown(config.DecreaseYKey, false), () => config.Rows--)) return;
+            if (CheckAndApply(() => ZInput.GetKeyDown(config.NextGridKey, false), () => config.NextGridType())) return;
+            if (CheckAndApply(() => ZInput.GetKeyDown(config.PrevGridKey, false), () => config.PrevGridType())) return;
         }
         else
         {

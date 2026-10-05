@@ -4,7 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Splatform;
 using UnityEngine;
-using static GhostGridRectangular;
+using static GhostGrid;
 using static ModContext;
 
 internal sealed class PlacementController : MonoBehaviour
@@ -49,9 +49,9 @@ internal sealed class PlacementController : MonoBehaviour
         bool showGhosts = config.ShowGhostsDuringPlacement;
 
         // Hide either invalid ghosts or all ghosts if showGhosts is false
-        foreach (GameObject ghost in GhostGridRectangular.Instance.ExtraGhosts)
+        foreach (GameObject ghost in GhostGrid.Instance.ExtraGhosts)
         {
-            bool shouldDisable = !showGhosts || !GhostGridRectangular.Instance.ValidExtraGhosts.Contains(ghost);
+            bool shouldDisable = !showGhosts || !GhostGrid.Instance.ValidExtraGhosts.Contains(ghost);
             if (shouldDisable)
                 DisableRenderers(ghost);
         }
@@ -59,12 +59,12 @@ internal sealed class PlacementController : MonoBehaviour
         // Tint valid ghosts
         if (showGhosts)
         {
-            foreach (GameObject validGhost in GhostGridRectangular.Instance.ValidExtraGhosts)
+            foreach (GameObject validGhost in GhostGrid.Instance.ValidExtraGhosts)
                 MaterialMan.instance.SetValue(validGhost, ShaderProps._Color, Color.gray);
         }
 
         //Plant stuff in batches
-        foreach (GameObject go in GhostGridRectangular.Instance.ValidExtraGhosts)
+        foreach (GameObject go in GhostGrid.Instance.ValidExtraGhosts)
         {
             count++;
             PlacePiece(player, go, piecePrefab);
@@ -73,7 +73,7 @@ internal sealed class PlacementController : MonoBehaviour
                 yield return null;
         }
 
-        GhostGridRectangular.Instance.ValidExtraGhosts.Clear();
+        GhostGrid.Instance.ValidExtraGhosts.Clear();
         _isPlanting = false;
         player.SetupPlacementGhost();
         ReEnableRenderers();

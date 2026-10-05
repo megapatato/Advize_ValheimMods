@@ -27,14 +27,14 @@ static class PlacementPatches
             if (PlacementController.IsPlanting)
                 return;
 
-            GhostGridRectangular.Instance.PrepareGhostPool(__instance.m_placementGhost);
+            GhostGrid.Instance.PrepareGhostPool(__instance.m_placementGhost);
 
             if (!config.ModActive || !__instance.m_placementGhost || !HoldingCultivator || !IsPlantOrPickable(__instance.m_placementGhost))
                 return;
             //Dbgl("SetupPlacementGhost2");
             __instance.m_placeRotation = placementRotation;
 
-            GhostGridRectangular.Instance.BuildGrid(__instance.m_placementGhost);
+            GhostGrid.Instance.BuildGrid(__instance.m_placementGhost);
         }
     }
 
@@ -47,7 +47,7 @@ static class PlacementPatches
                 return;
 
             //If there are no extra ghosts but there is supposed to be
-            if (GhostGridRectangular.Instance.GhostPlacementStatus.Count == 0 || (GhostGridRectangular.Instance.ExtraGhosts.Count == 0 && !(config.Rows == 1 && config.Columns == 1)))
+            if (GhostGrid.Instance.GhostPlacementStatus.Count == 0 || (GhostGrid.Instance.ExtraGhosts.Count == 0 && !(config.Rows == 1 && config.Columns == 1)))
             {
                 //Dbgl($"Calling Setup from Update. placementCount:{GhostGrid.GhostPlacementStatus.Count}, ghostCount is 0? ({GhostGrid.ExtraGhosts.Count == 0})");
                 __instance.SetupPlacementGhost();
@@ -60,7 +60,7 @@ static class PlacementPatches
                 return;
 
             PlacementState.Update(__instance.transform.position);
-            GhostGridRectangular.Instance.Update(__instance);
+            GhostGrid.Instance.Update(__instance);
         }
     }
 
@@ -101,7 +101,7 @@ static class PlacementPatches
 
             if (config.PreventPartialPlanting)
             {
-                foreach (Status status in GhostGridRectangular.Instance.GhostPlacementStatus)
+                foreach (Status status in GhostGrid.Instance.GhostPlacementStatus)
                 {
                     if (status == Status.Healthy)
                         continue;
@@ -139,12 +139,12 @@ static class PlacementPatches
 
             __instance.m_placeRotation = placementRotation;
 
-            if (GhostGridRectangular.Instance.MaxActiveGhosts < 1)
+            if (GhostGrid.Instance.MaxActiveGhosts < 1)
                 return;
 
-            for (int i = 0; i < GhostGridRectangular.Instance.MaxActiveGhosts; i++)
+            for (int i = 0; i < GhostGrid.Instance.MaxActiveGhosts; i++)
             {
-                Status status = GhostGridRectangular.Instance.GhostPlacementStatus[i + 1];
+                Status status = GhostGrid.Instance.GhostPlacementStatus[i + 1];
 
                 bool isHealthy = status == Status.Healthy;
                 bool lackResourcesAllowed = status == Status.LackResources && __instance.m_noPlacementCost;
@@ -153,12 +153,12 @@ static class PlacementPatches
                 bool canPlant = isHealthy || lackResourcesAllowed || invalidAllowed;
 
                 if (canPlant)
-                    GhostGridRectangular.Instance.ValidExtraGhosts.Add(GhostGridRectangular.Instance.ExtraGhosts[i]);
+                    GhostGrid.Instance.ValidExtraGhosts.Add(GhostGrid.Instance.ExtraGhosts[i]);
             }
 
-            int placementMultiplier = __instance.m_noPlacementCost ? 0 : GhostGridRectangular.Instance.ValidExtraGhosts.Count;
+            int placementMultiplier = __instance.m_noPlacementCost ? 0 : GhostGrid.Instance.ValidExtraGhosts.Count;
 
-            if (GhostGridRectangular.Instance.ValidExtraGhosts.Count > 0)
+            if (GhostGrid.Instance.ValidExtraGhosts.Count > 0)
             {
                 Piece.PieceCategory category = ___m_buildPieces.GetSelectedCategory();
                 Vector2Int index = ___m_buildPieces.GetSelectedIndex();

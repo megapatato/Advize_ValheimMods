@@ -24,6 +24,9 @@ sealed class ModConfig
     private readonly ConfigEntry<KeyboardShortcut> gamepadModifierKey;
     private readonly ConfigEntry<KeyboardShortcut> keyboardHarvestModifierKey;
 
+    private readonly ConfigEntry<KeyboardShortcut> nextGridKey;
+    private readonly ConfigEntry<KeyboardShortcut> prevGridKey;
+
     //Difficulty
     private readonly ConfigEntry<bool> preventPartialPlanting;
     private readonly ConfigEntry<bool> preventInvalidPlanting;
@@ -42,6 +45,7 @@ sealed class ModConfig
     private readonly ConfigEntry<bool> enableDebugMessages;
 
     //Grid
+    private readonly ConfigEntry<GridType> gridType;
     private readonly ConfigEntry<bool> globallyAlignGridDirections;
     private readonly ConfigEntry<bool> minimizeGridSpacing;
     private readonly ConfigEntry<GridSnappingStyle> gridSnappingStyle;
@@ -120,6 +124,12 @@ sealed class ModConfig
         keyboardHarvestModifierKey = Config.BindInOrder("Controls", "KeyboardHarvestModifierKey", new KeyboardShortcut(KeyCode.LeftShift),
             "Modifier key to enable bulk harvest when using keyboard controls. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
             a => { a.Description = "Modifier key to enable bulk harvest when using keyboard controls."; });
+        nextGridKey = Config.BindInOrder("Controls", "NextGridKey", new KeyboardShortcut(KeyCode.E),
+            "Key to switch to the next grid layout type. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
+            a => { a.Description = "Key to switch to the next layout type."; });
+        prevGridKey = Config.BindInOrder("Controls", "PrevGridKey", new KeyboardShortcut(KeyCode.Q),
+            "Key to switch to the previous grid layout type. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
+            a => { a.Description = "Key to switch to the previous layout type."; });
 
         //Difficulty
         preventPartialPlanting = Config.BindInOrder("Difficulty", "PreventPartialPlanting", false, "Prevents placement of resources when any placement ghosts are invalid for any reason.");
@@ -139,6 +149,7 @@ sealed class ModConfig
         enableDebugMessages = Config.BindInOrder("General", "EnableDebugMessages", false, "Enable mod debug messages in console.");
 
         //Grid
+        gridType = Config.BindInOrder("Grid", "GridType", GridType.Rectangular, "Layout pattern. Rectangular uses squares, it tiles into rectangular row & column grids. Triangular tiles triangles, it tiles into row & column grids. Hexagonal grows concentric hexagons from a center, tiles from triangles.");
         globallyAlignGridDirections = Config.BindInOrder("Grid", "GloballyAlignGridDirections", true, "When set to true, new grid placements will have their column and row directions align with the global grid.");
         minimizeGridSpacing = Config.BindInOrder("Grid", "MinimizeGridSpacing", false, "Allows for tighter grids, but with varying spacing used between diverse/distinct plants. ");
         gridSnappingStyle = Config.BindInOrder("Grid", "GridSnappingStyle", GridSnappingStyle.Intelligent, "Determines grid snapping style. Intelligent will attempt to prevent a new grid from overlapping with an old one. Legacy will allow any orientation of new rows and columns.");
@@ -194,7 +205,9 @@ sealed class ModConfig
         keyboardModifierKey.SettingChanged += KeybindsChanged;
         gamepadModifierKey.SettingChanged += KeybindsChanged;
         keyboardHarvestModifierKey.SettingChanged += KeybindsChanged;
-        showGridDirections.SettingChanged += (_, _) => GhostGridRectangular.Instance.DirectionRenderer?.SetActive(false);
+        nextGridKey.SettingChanged += KeybindsChanged;
+        prevGridKey.SettingChanged += KeybindsChanged;
+        showGridDirections.SettingChanged += (_, _) => GhostGrid.Instance.DirectionRenderer?.SetActive(false);
         rowStartColor.SettingChanged += GridColorChanged;
         rowEndColor.SettingChanged += GridColorChanged;
         columnStartColor.SettingChanged += GridColorChanged;
@@ -246,6 +259,8 @@ sealed class ModConfig
     internal KeyCode KeyboardModifierKey => keyboardModifierKey.Value.MainKey;
     internal KeyCode GamepadModifierKey => gamepadModifierKey.Value.MainKey;
     internal KeyCode KeyboardHarvestModifierKey => keyboardHarvestModifierKey.Value.MainKey;
+    internal KeyCode NextGridKey => nextGridKey.Value.MainKey;
+    internal KeyCode PrevGridKey => prevGridKey.Value.MainKey;
     //Difficulty
     internal bool PreventPartialPlanting => preventPartialPlanting.Value;
     internal bool PreventInvalidPlanting => preventInvalidPlanting.Value;
@@ -285,6 +300,43 @@ sealed class ModConfig
     }
     internal bool EnableDebugMessages => enableDebugMessages.Value;
     //Grid
+    internal GridType GridType => gridType.Value;
+    internal void NextGridType()
+    {
+        switch (config.GridType)
+        {
+            case GridType.Rectangular:
+                gridType.Value = GridType.Triangular;
+                break;
+            case GridType.Triangular:
+                gridType.Value = GridType.Hexagonal;
+                break;
+            case GridType.Hexagonal:
+                gridType.Value = GridType.Rectangular;
+                break;
+            default:
+                gridType.Value = GridType.Rectangular;
+                break;
+        }
+    }
+    internal void PrevGridType()
+    { 
+        switch (config.GridType)
+        {
+            case GridType.Rectangular:
+                gridType.Value = GridType.Hexagonal;
+                break;
+            case GridType.Triangular:
+                gridType.Value = GridType.Rectangular;
+                break;
+            case GridType.Hexagonal: 
+                gridType.Value = GridType.Triangular;
+                break;
+            default:
+                gridType.Value = GridType.Rectangular;
+                break;
+        }
+    }
     internal bool GloballyAlignGridDirections => globallyAlignGridDirections.Value;
     internal bool MinimizeGridSpacing => minimizeGridSpacing.Value;
     internal GridSnappingStyle GridSnappingStyle => gridSnappingStyle.Value;
