@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Net;
 using UnityEngine;
 using static ModContext;
 using static PlacementState;
@@ -28,6 +29,8 @@ internal abstract class GhostGrid
     protected bool _preservePool;
 
     internal abstract int MaxActiveGhosts { get; }
+    protected abstract void InitializeGhosts(GameObject rootGhost);
+    internal abstract void Update(Player player);
 
     internal void ResizeGrid()
     {
@@ -89,8 +92,6 @@ internal abstract class GhostGrid
         }
     }
 
-    protected abstract void InitializeGhosts(GameObject rootGhost);
-
     protected void DeactivateExcessGhosts()
     {
         //Dbgl("DeactivateExcessGhosts");
@@ -132,15 +133,13 @@ internal abstract class GhostGrid
         return true;
     }
 
-    protected void DestroyExtraGhosts()
+    internal void DestroyExtraGhosts()
     {
         foreach (GameObject ghost in ExtraGhosts)
             UnityEngine.Object.Destroy(ghost);
 
         ExtraGhosts.Clear();
     }
-
-    internal abstract void Update(Player player);
 
     protected void UpdatePieceCost(Piece piece, int ghostIndex, int baseCost)
     {
@@ -208,8 +207,8 @@ internal abstract class GhostGrid
             switch (config.GridType)
             {
                 case GridType.Triangular:
-                case GridType.Hexagonal:
-                    throw new NotImplementedException();
+                    return GhostGridTriangular.Instance;
+                //case GridType.Hexagonal:
                 case GridType.Rectangular:
                 default:
                     return GhostGridRectangular.Instance;
@@ -218,27 +217,20 @@ internal abstract class GhostGrid
     }
 }
 
-internal sealed class GhostGridRectangular : GhostGrid
+/// <summary>
+/// Class <c>GhostArray</c> represents a layout of rows & columns; all rows have the same number of ghosts, as do all columns. It is meant to be derived into specialized child classes, notably square & triangular grids.
+/// </summary>
+internal abstract class GhostArray : GhostGrid
 {
-    private static readonly GhostGridRectangular instance = new();
-
-    private GhostGridRectangular() { }
-
-    public static new GhostGridRectangular Instance 
-    { 
-        get 
-        {
-            return instance;
-        } 
-    }
-
     internal override int MaxActiveGhosts => Mathf.Min(config.Rows * config.Columns - 1, config.MaxConcurrentPlacements - 1);
-    private int TotalCells => 1 + MaxActiveGhosts;
-    private int ActualRows => (TotalCells + config.Columns - 1) / config.Columns;
-    private int ActualColumns => Mathf.Min(config.Columns, TotalCells);
+    protected int TotalCells => 1 + MaxActiveGhosts;
+    protected int ActualRows => (TotalCells + config.Columns - 1) / config.Columns;
+    protected int ActualColumns => Mathf.Min(config.Columns, TotalCells);
 
     private static int _lastRows;
     private static int _lastColumns;
+
+    protected abstract Vector3 GetGhostPosition(int row, int column, int index);
 
     protected override void InitializeGhosts(GameObject rootGhost)
     {
@@ -311,7 +303,7 @@ internal sealed class GhostGridRectangular : GhostGrid
         UpdatePieceCost(piece, 0, baseCost);
     }
 
-    private void ShowGridDirections()
+    protected void ShowGridDirections()
     {
         DirectionRenderer.SetActive(PlacementGhost.activeSelf);
         Vector3 vertex = BasePosition + Vector3.up * 0.5f;
@@ -322,7 +314,7 @@ internal sealed class GhostGridRectangular : GhostGrid
         LineRenderers[2].SetPositions([vertex, vertex + SnapDirection * RowDirection.magnitude]);
     }
 
-    private void UpdateGridVersion()
+    protected void UpdateGridVersion()
     {
         bool changed = false;
 
@@ -356,7 +348,7 @@ internal sealed class GhostGridRectangular : GhostGrid
             _gridVersion++;
     }
 
-    private void UpdateGhost(Player player, Piece piece, int row, int column, int index)
+    protected void UpdateGhost(Player player, Piece piece, int row, int column, int index)
     {
         GameObject ghost = GetGhostObject(index);
         GhostCache cache = GetGhostCache(ghost);
@@ -372,8 +364,27 @@ internal sealed class GhostGridRectangular : GhostGrid
         if (hasCache)
             cache.lastUpdatedVersion = _gridVersion;
     }
+}
+
+
+/// <summary>
+/// Class <c>GhostGridRectangular</c> tiles its ghosts with squares, generating a rectangular grid.
+/// </summary>
+internal sealed class GhostGridRectangular : GhostArray
+{
+    private static readonly GhostGridRectangular instance = new();
+
+    private GhostGridRectangular() { }
+
+    public static new GhostGridRectangular Instance 
+    { 
+        get 
+        {
+            return instance;
+        } 
+    }
     
-    private static Vector3 GetGhostPosition(int row, int column, int index)
+    protected override Vector3 GetGhostPosition(int row, int column, int index)
     {
         Vector3 pos = index == 0 ? BasePosition : BasePosition + RowDirection * row + ColumnDirection * column;
 
@@ -381,28 +392,53 @@ internal sealed class GhostGridRectangular : GhostGrid
         pos.y = height;
 
         return pos;
-    }    
+    }
 }
 
-/*
-internal sealed class GhostGridTriangular : GhostGrid
+
+/// <summary>
+/// Class <c>GhostGridTriangular</c> tiles its ghosts with triangles, generating a semi-rectangular grid with 2 opposite ragged edges along the column axis.
+/// </summary>
+internal sealed class GhostGridTriangular : GhostArray
 {
     private static readonly GhostGridTriangular instance = new();
 
     private GhostGridTriangular() { }
 
-    public static GhostGridTriangular Instance
+    public static new GhostGridTriangular Instance
     {
         get
         {
             return instance;
         }
     }
+
+    protected override Vector3 GetGhostPosition(int row, int column, int index)
+    {
+        Vector3 row_delta = new(0, 0, 0);
+        Vector3 col_delta = new(0, 0, 0);
+        if (index != 0) {
+            row_delta = RowDirection * Mathf.Sqrt(0.75f) * row;   // height of unit triangle = sqrt(1^2 - 0.5^2)
+            if (row % 2 == 0)
+            {
+                col_delta = ColumnDirection * column;
+            }
+            else
+            {
+                col_delta = ColumnDirection * (column + 0.5f);
+            }
+        }
+        Vector3 pos = BasePosition + row_delta + col_delta;
+        Heightmap.GetHeight(pos, out float height);
+        pos.y = height;
+
+        return pos;
+    }
 }
-*/
+
 
 enum GridType : int {
     Rectangular = 0,
     Triangular = 1,
-    Hexagonal = 11,
+    // Hexagonal = 11,
 }
