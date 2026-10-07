@@ -124,12 +124,12 @@ sealed class ModConfig
         keyboardHarvestModifierKey = Config.BindInOrder("Controls", "KeyboardHarvestModifierKey", new KeyboardShortcut(KeyCode.LeftShift),
             "Modifier key to enable bulk harvest when using keyboard controls. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
             a => { a.Description = "Modifier key to enable bulk harvest when using keyboard controls."; });
-        nextGridKey = Config.BindInOrder("Controls", "NextGridKey", new KeyboardShortcut(KeyCode.E),
+        nextGridKey = Config.BindInOrder("Controls", "NextGridKey", new KeyboardShortcut(KeyCode.E, KeyCode.LeftShift),
             "Key to switch to the next grid layout type. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
-            a => { a.Description = "Key to switch to the next layout type."; });
-        prevGridKey = Config.BindInOrder("Controls", "PrevGridKey", new KeyboardShortcut(KeyCode.Q),
+            a => { a.Description = "Key or combo to switch to the next layout pattern."; });
+        prevGridKey = Config.BindInOrder("Controls", "PrevGridKey", new KeyboardShortcut(KeyCode.Q, KeyCode.LeftShift),
             "Key to switch to the previous grid layout type. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
-            a => { a.Description = "Key to switch to the previous layout type."; });
+            a => { a.Description = "Key or combo to switch to the previous layout pattern."; });
 
         //Difficulty
         preventPartialPlanting = Config.BindInOrder("Difficulty", "PreventPartialPlanting", false, "Prevents placement of resources when any placement ghosts are invalid for any reason.");
@@ -149,7 +149,7 @@ sealed class ModConfig
         enableDebugMessages = Config.BindInOrder("General", "EnableDebugMessages", false, "Enable mod debug messages in console.");
 
         //Grid
-        gridType = Config.BindInOrder("Grid", "GridType", GridType.Rectangular, "Layout pattern. Rectangular uses squares, it tiles into rectangular row & column grids. Triangular tiles triangles, it tiles into row & column grids. Hexagonal grows concentric hexagons from a center, tiles from triangles.");
+        gridType = Config.BindInOrder("Grid", "GridType", GridType.Rectangular, "Layout pattern. Rectangular uses squares; it tiles into rectangular row & column grids. Triangular uses triangles; it tiles into row & column grids. Hexagonal grows concentric hexagons from a center, tiles from triangles.");
         globallyAlignGridDirections = Config.BindInOrder("Grid", "GloballyAlignGridDirections", true, "When set to true, new grid placements will have their column and row directions align with the global grid.");
         minimizeGridSpacing = Config.BindInOrder("Grid", "MinimizeGridSpacing", false, "Allows for tighter grids, but with varying spacing used between diverse/distinct plants. ");
         gridSnappingStyle = Config.BindInOrder("Grid", "GridSnappingStyle", GridSnappingStyle.Intelligent, "Determines grid snapping style. Intelligent will attempt to prevent a new grid from overlapping with an old one. Legacy will allow any orientation of new rows and columns.");
@@ -303,15 +303,16 @@ sealed class ModConfig
     internal GridType GridType => gridType.Value;
     internal void NextGridType()
     {
+        GhostGrid.Instance.DestroyExtraGhosts();
         switch (config.GridType)
         {
             case GridType.Rectangular:
                 gridType.Value = GridType.Triangular;
                 break;
-            case GridType.Triangular:
+            case GridType.Triangular: /*
                 gridType.Value = GridType.Hexagonal;
                 break;
-            case GridType.Hexagonal:
+            case GridType.Hexagonal: */
                 gridType.Value = GridType.Rectangular;
                 break;
             default:
@@ -320,16 +321,17 @@ sealed class ModConfig
         }
     }
     internal void PrevGridType()
-    { 
+    {
+        GhostGrid.Instance.DestroyExtraGhosts();
         switch (config.GridType)
         {
-            case GridType.Rectangular:
-                gridType.Value = GridType.Hexagonal;
-                break;
             case GridType.Triangular:
                 gridType.Value = GridType.Rectangular;
                 break;
-            case GridType.Hexagonal: 
+            case GridType.Rectangular: /*
+                gridType.Value = GridType.Hexagonal;
+                break;
+            case GridType.Hexagonal: */
                 gridType.Value = GridType.Triangular;
                 break;
             default:
