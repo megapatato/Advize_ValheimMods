@@ -13,13 +13,16 @@ internal static class ConfigEventHandlers
 
     internal static void GridColorChanged(object sender, EventArgs e)
     {
-        if (!GhostGrid.Instance.DirectionRenderer) return;
+        foreach (GhostGrid instance in GhostGrid.Instances.Values)
+        {
+            if (!instance.DirectionRenderer) continue;
 
-        GhostGrid.Instance.LineRenderers[0].startColor = config.RowStartColor;
-        GhostGrid.Instance.LineRenderers[0].endColor = config.RowEndColor;
-        GhostGrid.Instance.LineRenderers[1].startColor = config.ColumnStartColor;
-        GhostGrid.Instance.LineRenderers[1].endColor = config.ColumnEndColor;
-        GhostGrid.Instance.LineRenderers[2].startColor = config.SnapStartColor;
-        GhostGrid.Instance.LineRenderers[2].endColor = config.SnapEndColor;
+            instance.LineRenderers[0].startColor = config.RowStartColor;
+            instance.LineRenderers[0].endColor = config.RowEndColor;
+            instance.LineRenderers[1].startColor = config.ColumnStartColor;
+            instance.LineRenderers[1].endColor = config.ColumnEndColor;
+            instance.LineRenderers[2].startColor = config.SnapStartColor;
+            instance.LineRenderers[2].endColor = config.SnapEndColor;
+        }
     }
 }

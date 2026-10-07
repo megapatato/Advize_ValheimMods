@@ -101,18 +101,21 @@ static class ModInitPatches
     private static void InitLineRenderers()
     {
         Material material = Resources.FindObjectsOfTypeAll<Material>().First(m => m.name == "Default-Line");
-        GhostGrid.Instance.DirectionRenderer = new();
-        Object.DontDestroyOnLoad(GhostGrid.Instance.DirectionRenderer);
 
-        for (int i = 0; i < 3; i++)
+        foreach (GhostGrid instance in GhostGrid.Instances.Values)
         {
-            GameObject child = new();
-            child.transform.SetParent(GhostGrid.Instance.DirectionRenderer.transform);
-            GhostGrid.Instance.LineRenderers.Add(child.AddComponent<LineRenderer>());
-            GhostGrid.Instance.LineRenderers[i].material = material;
-            GhostGrid.Instance.LineRenderers[i].widthMultiplier = 0.025f;
-        }
+            instance.DirectionRenderer = new();
+            Object.DontDestroyOnLoad(instance.DirectionRenderer);
 
+            for (int i = 0; i < 3; i++)
+            {
+                GameObject child = new();
+                child.transform.SetParent(instance.DirectionRenderer.transform);
+                instance.LineRenderers.Add(child.AddComponent<LineRenderer>());
+                instance.LineRenderers[i].material = material;
+                instance.LineRenderers[i].widthMultiplier = 0.025f;
+            }            
+        }
         ConfigEventHandlers.GridColorChanged(null, null);
     }
 }

@@ -207,7 +207,11 @@ sealed class ModConfig
         keyboardHarvestModifierKey.SettingChanged += KeybindsChanged;
         nextGridKey.SettingChanged += KeybindsChanged;
         prevGridKey.SettingChanged += KeybindsChanged;
-        showGridDirections.SettingChanged += (_, _) => GhostGrid.Instance.DirectionRenderer?.SetActive(false);
+        showGridDirections.SettingChanged += (_, _) =>
+        {
+            foreach (GhostGrid instance in GhostGrid.Instances.Values)
+                instance.DirectionRenderer?.SetActive(false);
+        };
         rowStartColor.SettingChanged += GridColorChanged;
         rowEndColor.SettingChanged += GridColorChanged;
         columnStartColor.SettingChanged += GridColorChanged;
@@ -304,6 +308,7 @@ sealed class ModConfig
     internal void NextGridType()
     {
         GhostGrid.Instance.DestroyExtraGhosts();
+        GhostGrid.Instance.DirectionRenderer.SetActive(false);
         switch (config.GridType)
         {
             case GridType.Rectangular:
@@ -323,6 +328,7 @@ sealed class ModConfig
     internal void PrevGridType()
     {
         GhostGrid.Instance.DestroyExtraGhosts();
+        GhostGrid.Instance.DirectionRenderer.SetActive(false);
         switch (config.GridType)
         {
             case GridType.Triangular:

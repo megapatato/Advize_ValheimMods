@@ -27,6 +27,16 @@ internal abstract class GhostGrid
     protected string _lastPieceName;
     protected bool _preservePool;
 
+    public static Dictionary<GridType, GhostGrid> Instances;
+    static GhostGrid()
+    {
+        Instances = new Dictionary<GridType, GhostGrid>()
+        {
+            [GridType.Rectangular] = new GhostGridRectangular(),
+            [GridType.Triangular] = new GhostGridTriangular()
+        };
+    }
+
     internal abstract int MaxActiveGhosts { get; }
     protected abstract void InitializeGhosts(GameObject rootGhost);
     internal abstract void Update(Player player);
@@ -199,21 +209,7 @@ internal abstract class GhostGrid
         }
     }
 
-    internal static GhostGrid Instance
-    {
-        get
-        {
-            switch (config.GridType)
-            {
-                case GridType.Triangular:
-                    return GhostGridTriangular.Instance;
-                //case GridType.Hexagonal:
-                case GridType.Rectangular:
-                default:
-                    return GhostGridRectangular.Instance;
-            }
-        }
-    }
+    internal static GhostGrid Instance => Instances[config.GridType];
 }
 
 /// <summary>
@@ -229,6 +225,7 @@ internal abstract class GhostArray : GhostGrid
     private static int _lastRows;
     private static int _lastColumns;
 
+    protected abstract void ShowGridDirections();
     protected abstract Vector3 GetGhostPosition(int row, int column, int index);
 
     protected override void InitializeGhosts(GameObject rootGhost)
@@ -302,17 +299,6 @@ internal abstract class GhostArray : GhostGrid
         UpdatePieceCost(piece, 0, baseCost);
     }
 
-    protected void ShowGridDirections()
-    {
-        DirectionRenderer.SetActive(PlacementGhost.activeSelf);
-        Vector3 vertex = BasePosition + Vector3.up * 0.5f;
-        LineRenderers[0].SetPositions([vertex, vertex + (RowDirection * (ActualRows - 1))]);
-        LineRenderers[1].SetPositions([vertex, vertex + (ColumnDirection * (ActualColumns - 1))]);
-        // Debug purposes, show direction to snap origin
-        LineRenderers[2].gameObject.SetActive(config.ShowSnapDirection);
-        LineRenderers[2].SetPositions([vertex, vertex + SnapDirection * RowDirection.magnitude]);
-    }
-
     protected void UpdateGridVersion()
     {
         bool changed = false;
@@ -371,18 +357,19 @@ internal abstract class GhostArray : GhostGrid
 /// </summary>
 internal sealed class GhostGridRectangular : GhostArray
 {
-    private static readonly GhostGridRectangular instance = new();
+    public GhostGridRectangular() { }
 
-    private GhostGridRectangular() { }
-
-    public static new GhostGridRectangular Instance 
-    { 
-        get 
-        {
-            return instance;
-        } 
+    protected override void ShowGridDirections()
+    {
+        DirectionRenderer.SetActive(PlacementGhost.activeSelf);
+        Vector3 vertex = BasePosition + Vector3.up * 0.5f;
+        LineRenderers[0].SetPositions([vertex, vertex + (RowDirection * (ActualRows - 1))]);
+        LineRenderers[1].SetPositions([vertex, vertex + (ColumnDirection * (ActualColumns - 1))]);
+        // Debug purposes, show direction to snap origin
+        LineRenderers[2].gameObject.SetActive(config.ShowSnapDirection);
+        LineRenderers[2].SetPositions([vertex, vertex + SnapDirection * RowDirection.magnitude]);
     }
-    
+
     protected override Vector3 GetGhostPosition(int row, int column, int index)
     {
         Vector3 pos = index == 0 ? BasePosition : BasePosition + RowDirection * row + ColumnDirection * column;
@@ -400,16 +387,17 @@ internal sealed class GhostGridRectangular : GhostArray
 /// </summary>
 internal sealed class GhostGridTriangular : GhostArray
 {
-    private static readonly GhostGridTriangular instance = new();
+    public GhostGridTriangular() { }
 
-    private GhostGridTriangular() { }
-
-    public static new GhostGridTriangular Instance
+    protected override void ShowGridDirections()
     {
-        get
-        {
-            return instance;
-        }
+        DirectionRenderer.SetActive(PlacementGhost.activeSelf);
+        Vector3 vertex = BasePosition + Vector3.up * 0.5f;
+        LineRenderers[0].SetPositions([vertex, vertex + (RowDirection * Mathf.Sqrt(0.75f) * (ActualRows - 1))]);
+        LineRenderers[1].SetPositions([vertex, vertex + (ColumnDirection * (ActualColumns - 0.5f))]);
+        // Debug purposes, show direction to snap origin
+        LineRenderers[2].gameObject.SetActive(config.ShowSnapDirection);
+        LineRenderers[2].SetPositions([vertex, vertex + SnapDirection * RowDirection.magnitude]);
     }
 
     protected override Vector3 GetGhostPosition(int row, int column, int index)
