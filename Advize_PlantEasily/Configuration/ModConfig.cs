@@ -15,10 +15,10 @@ sealed class ModConfig
     private readonly ConfigEntry<KeyboardShortcut> enableSnappingKey;
     private readonly ConfigEntry<KeyboardShortcut> toggleAutoReplantKey;
 
-    private readonly ConfigEntry<KeyboardShortcut> increaseXKey;
-    private readonly ConfigEntry<KeyboardShortcut> increaseYKey;
-    private readonly ConfigEntry<KeyboardShortcut> decreaseXKey;
-    private readonly ConfigEntry<KeyboardShortcut> decreaseYKey;
+    private readonly ConfigEntry<KeyboardShortcut> increaseAKey;
+    private readonly ConfigEntry<KeyboardShortcut> increaseBKey;
+    private readonly ConfigEntry<KeyboardShortcut> decreaseAKey;
+    private readonly ConfigEntry<KeyboardShortcut> decreaseBKey;
 
     private readonly ConfigEntry<KeyboardShortcut> keyboardModifierKey;
     private readonly ConfigEntry<KeyboardShortcut> gamepadModifierKey;
@@ -36,8 +36,8 @@ sealed class ModConfig
     //General
     private readonly ConfigEntry<bool> modActive;
     private readonly ConfigEntry<bool> snapActive;
-    private readonly ConfigEntry<int> rows;
-    private readonly ConfigEntry<int> columns;
+    private readonly ConfigEntry<int> gridSizeA;
+    private readonly ConfigEntry<int> gridSizeB;
     private readonly ConfigEntry<bool> randomizeRotation;
     private readonly ConfigEntry<bool> enableScatter;
     private readonly ConfigEntry<float> positionScatterRadius;
@@ -81,10 +81,10 @@ sealed class ModConfig
     private readonly ConfigEntry<bool> showSnapDirection;
     private readonly ConfigEntry<bool> highlightRootPlacementGhost;
     private readonly ConfigEntry<Color> rootGhostHighlightColor;
-    private readonly ConfigEntry<Color> rowStartColor;
-    private readonly ConfigEntry<Color> rowEndColor;
-    private readonly ConfigEntry<Color> columnStartColor;
-    private readonly ConfigEntry<Color> columnEndColor;
+    private readonly ConfigEntry<Color> rootYStartColor;
+    private readonly ConfigEntry<Color> rootYEndColor;
+    private readonly ConfigEntry<Color> rootXStartColor;
+    private readonly ConfigEntry<Color> rootXEndColor;
     private readonly ConfigEntry<Color> snapStartColor;
     private readonly ConfigEntry<Color> snapEndColor;
 
@@ -103,18 +103,18 @@ sealed class ModConfig
         toggleAutoReplantKey = Config.BindInOrder("Controls", "ToggleAutoReplantKey", new KeyboardShortcut(KeyCode.F6),
             "Key to toggle on/off the [Harvesting]ReplantOnHarvest setting. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
             a => { a.Description = "Key to toggle on/off the [Harvesting]ReplantOnHarvest setting."; });
-        increaseXKey = Config.BindInOrder("Controls", "IncreaseXKey", new KeyboardShortcut(KeyCode.RightArrow),
-            "Key to increase number of grid columns. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
-            a => { a.Description = "Key to increase number of grid columns."; });
-        increaseYKey = Config.BindInOrder("Controls", "IncreaseYKey", new KeyboardShortcut(KeyCode.UpArrow),
-            "Key to increase number of grid rows. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
-            a => { a.Description = "Key to increase number of grid rows."; });
-        decreaseXKey = Config.BindInOrder("Controls", "DecreaseXKey", new KeyboardShortcut(KeyCode.LeftArrow),
-            "Key to decrease number of grid columns. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
-            a => { a.Description = "Key to decrease number of grid columns."; });
-        decreaseYKey = Config.BindInOrder("Controls", "DecreaseYKey", new KeyboardShortcut(KeyCode.DownArrow),
-            "Key to decrease number of grid rows. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
-            a => { a.Description = "Key to decrease number of grid rows."; });
+        increaseAKey = Config.BindInOrder("Controls", "IncreaseAKey", new KeyboardShortcut(KeyCode.RightArrow),
+            "Key to increase the grid's size via the A parameter. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
+            a => { a.Description = "Key to increase the grid's size via the A parameter."; });
+        increaseBKey = Config.BindInOrder("Controls", "IncreaseBKey", new KeyboardShortcut(KeyCode.UpArrow),
+            "Key to increase the grid's size via the B parameter. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
+            a => { a.Description = "Key to increase the grid's size via the B parameter."; });
+        decreaseAKey = Config.BindInOrder("Controls", "DecreaseAKey", new KeyboardShortcut(KeyCode.LeftArrow),
+            "Key to decrease the grid's size via the A parameter. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
+            a => { a.Description = "Key to decrease the grid's size via the A parameter."; });
+        decreaseBKey = Config.BindInOrder("Controls", "DecreaseBKey", new KeyboardShortcut(KeyCode.DownArrow),
+            "Key to decrease the grid's size via the B parameter. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
+            a => { a.Description = "Key to decrease the grid's size via the B parameter."; });
         keyboardModifierKey = Config.BindInOrder("Controls", "KeyboardModifierKey", new KeyboardShortcut(KeyCode.RightControl),
             "Modifier key when using keyboard controls. See https://docs.unity3d.com/ScriptReference/KeyCode.html",
             a => { a.Description = "Modifier key when using keyboard controls."; });
@@ -140,8 +140,8 @@ sealed class ModConfig
         //General
         modActive = Config.BindInOrder("General", "ModActive", true, "Enables all mod features.");
         snapActive = Config.BindInOrder("General", "SnapActive", true, "Enables the grid snapping feature.");
-        rows = Config.BindInOrder("General", "Rows", 2, "Number of rows for planting grid aka height.");
-        columns = Config.BindInOrder("General", "Columns", 2, "Number of columns for planting grid aka width.");
+        gridSizeA = Config.BindInOrder("General", "GridSizeA", 3, "A parameter for determining grid size; e.g. a rectangle's width.");
+        gridSizeB = Config.BindInOrder("General", "GridSizeB", 2, "B parameter for determining grid size; e.g. a rectangle's height.");
         randomizeRotation = Config.BindInOrder("General", "RandomizeRotation", true, "Randomizes rotation of pieces once placed.");
         enableScatter = Config.BindInOrder("General", "EnableScatter", true, "Enables subtle randomization of placement to prevent grids from looking overly uniform. Controls both positional scatter and rotational tilt.");
         positionScatterRadius = Config.BindInOrder("General", "PositionScatterRadius", 0f, "Applies small random offsets to the X/Z position of placed pieces. Keep values low (0.01–0.05) to avoid visible grid distortion, especially in large grids.");
@@ -185,23 +185,23 @@ sealed class ModConfig
         showSnapDirection = Config.BindInOrder("UI", "ShowSnapDirection", true, "Render a line from root placement ghost to the position it's snapping from.");
         highlightRootPlacementGhost = Config.BindInOrder("UI", "HighlightRootGhost", true, "Highlight the root placement ghost while bulk planting.");
         rootGhostHighlightColor = Config.BindInOrder("UI", "RootGhostHighlightColor", Color.green, "Highlight color for root placement ghost when [UI]HighlightRootGhost is enabled.");
-        rowStartColor = Config.BindInOrder("UI", "RowStartColor", Color.blue, "Starting color for row direction when [UI]ShowGridDirections is enabled.");
-        rowEndColor = Config.BindInOrder("UI", "RowEndColor", Color.cyan, "Ending color for row direction when [UI]ShowGridDirections is enabled.");
-        columnStartColor = Config.BindInOrder("UI", "ColumnStartColor", Color.green, "Starting color for column direction when [UI]ShowGridDirections is enabled.");
-        columnEndColor = Config.BindInOrder("UI", "ColumnEndColor", Color.yellow, "Ending color for column direction when [UI]ShowGridDirections is enabled.");
+        rootXStartColor = Config.BindInOrder("UI", "RootXStartColor", Color.green, "Starting color for the X direction when [UI]ShowGridDirections is enabled.  For row & column arrays, this maps to the A parameter.");
+        rootXEndColor = Config.BindInOrder("UI", "RootXEndColor", Color.yellow, "Ending color for the X direction when [UI]ShowGridDirections is enabled.");
+        rootYStartColor = Config.BindInOrder("UI", "RootYStartColor", Color.blue, "Starting color for the Y direction when [UI]ShowGridDirections is enabled. For row & column arrays, this maps to the B parameter.");
+        rootYEndColor = Config.BindInOrder("UI", "RootYEndColor", Color.cyan, "Ending color for the Y direction when [UI]ShowGridDirections is enabled.");
         snapStartColor = Config.BindInOrder("UI", "SnapStartColor", Color.red, "Starting color for snap direction when [UI]ShowGridDirections is enabled.");
         snapEndColor = Config.BindInOrder("UI", "SnapEndColor", Color.magenta, "Ending color for snap direction when [UI]ShowGridDirections is enabled.");
 
         configFile.Save();
         configFile.SaveOnConfigSet = true;
 
-        rows.SettingChanged += GridSizeChanged;
-        columns.SettingChanged += GridSizeChanged;
+        gridSizeA.SettingChanged += GridSizeChanged;
+        gridSizeB.SettingChanged += GridSizeChanged;
         maxConcurrentPlacements.SettingChanged += GridSizeChanged;
-        increaseXKey.SettingChanged += KeybindsChanged;
-        increaseYKey.SettingChanged += KeybindsChanged;
-        decreaseXKey.SettingChanged += KeybindsChanged;
-        decreaseYKey.SettingChanged += KeybindsChanged;
+        increaseAKey.SettingChanged += KeybindsChanged;
+        increaseBKey.SettingChanged += KeybindsChanged;
+        decreaseAKey.SettingChanged += KeybindsChanged;
+        decreaseBKey.SettingChanged += KeybindsChanged;
         keyboardModifierKey.SettingChanged += KeybindsChanged;
         gamepadModifierKey.SettingChanged += KeybindsChanged;
         keyboardHarvestModifierKey.SettingChanged += KeybindsChanged;
@@ -212,10 +212,10 @@ sealed class ModConfig
             foreach (GhostGrid instance in GhostGrid.Instances.Values)
                 instance.DirectionRenderer?.SetActive(false);
         };
-        rowStartColor.SettingChanged += GridColorChanged;
-        rowEndColor.SettingChanged += GridColorChanged;
-        columnStartColor.SettingChanged += GridColorChanged;
-        columnEndColor.SettingChanged += GridColorChanged;
+        rootXStartColor.SettingChanged += GridColorChanged;
+        rootXEndColor.SettingChanged += GridColorChanged;
+        rootYStartColor.SettingChanged += GridColorChanged;
+        rootYEndColor.SettingChanged += GridColorChanged;
         snapStartColor.SettingChanged += GridColorChanged;
         snapEndColor.SettingChanged += GridColorChanged;
     }
@@ -256,10 +256,10 @@ sealed class ModConfig
     internal KeyboardShortcut EnableModKey => enableModKey.Value;
     internal KeyboardShortcut EnableSnappingKey => enableSnappingKey.Value;
     internal KeyboardShortcut ToggleAutoReplantKey => toggleAutoReplantKey.Value;
-    internal KeyCode IncreaseXKey => increaseXKey.Value.MainKey;
-    internal KeyCode IncreaseYKey => increaseYKey.Value.MainKey;
-    internal KeyCode DecreaseXKey => decreaseXKey.Value.MainKey;
-    internal KeyCode DecreaseYKey => decreaseYKey.Value.MainKey;
+    internal KeyCode IncreaseXKey => increaseAKey.Value.MainKey;
+    internal KeyCode IncreaseYKey => increaseBKey.Value.MainKey;
+    internal KeyCode DecreaseXKey => decreaseAKey.Value.MainKey;
+    internal KeyCode DecreaseYKey => decreaseBKey.Value.MainKey;
     internal KeyCode KeyboardModifierKey => keyboardModifierKey.Value.MainKey;
     internal KeyCode GamepadModifierKey => gamepadModifierKey.Value.MainKey;
     internal KeyCode KeyboardHarvestModifierKey => keyboardHarvestModifierKey.Value.MainKey;
@@ -281,15 +281,15 @@ sealed class ModConfig
         get { return snapActive.Value; }
         set { snapActive.BoxedValue = value; }
     }
-    internal int Rows
+    internal int GridSizeA
     {
-        get { return Mathf.Max(rows.Value, 1); }
-        set { rows.BoxedValue = Mathf.Max(value, 1); }
+        get { return Mathf.Max(gridSizeA.Value, 1); }
+        set { gridSizeA.BoxedValue = Mathf.Max(value, 1); }
     }
-    internal int Columns
+    internal int GridSizeB
     {
-        get { return Mathf.Max(columns.Value, 1); }
-        set { columns.BoxedValue = Mathf.Max(value, 1); }
+        get { return Mathf.Max(gridSizeB.Value, 1); }
+        set { gridSizeB.BoxedValue = Mathf.Max(value, 1); }
     }
     internal bool RandomizeRotation => randomizeRotation.Value;
     internal bool TryGetScatterRadius(out float radius)
@@ -380,10 +380,10 @@ sealed class ModConfig
     internal bool ShowSnapDirection => showSnapDirection.Value;
     internal bool HighlightRootPlacementGhost => highlightRootPlacementGhost.Value;
     internal Color RootGhostHighlightColor => rootGhostHighlightColor.Value;
-    internal Color RowStartColor => rowStartColor.Value;
-    internal Color RowEndColor => rowEndColor.Value;
-    internal Color ColumnStartColor => columnStartColor.Value;
-    internal Color ColumnEndColor => columnEndColor.Value;
+    internal Color RowStartColor => rootYStartColor.Value;
+    internal Color RowEndColor => rootYEndColor.Value;
+    internal Color ColumnStartColor => rootXStartColor.Value;
+    internal Color ColumnEndColor => rootXEndColor.Value;
     internal Color SnapStartColor => snapStartColor.Value;
     internal Color SnapEndColor => snapEndColor.Value;
 }

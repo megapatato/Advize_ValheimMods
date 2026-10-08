@@ -14,7 +14,7 @@ static class UIPatches
         if (GhostGrid.Instance.ExtraGhosts.Count < 1 || !config.ShowCost) return;
 
         TMP_Text component = elementRoot.transform.Find("res_amount").GetComponent<TMP_Text>();
-        int totalGhosts = Mathf.Min(config.Rows * config.Columns, config.MaxConcurrentPlacements);
+        int totalGhosts = Mathf.Min(config.GridSizeB * config.GridSizeA, config.MaxConcurrentPlacements);
 
         string formattedCost = config.CostDisplayStyle == 0 ? config.CostDisplayLocation == 0 ?
             $"{totalGhosts}x" : $"x{totalGhosts}" : $"({req.m_amount * totalGhosts})";

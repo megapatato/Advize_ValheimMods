@@ -52,19 +52,19 @@ static class InputPatches
 
         if (!ZInput.IsGamepadActive())
         {
-            if (CheckAndApply(() => ZInput.GetKeyDown(config.IncreaseXKey, false), () => config.Columns++)) return;
-            if (CheckAndApply(() => ZInput.GetKeyDown(config.IncreaseYKey, false), () => config.Rows++)) return;
-            if (CheckAndApply(() => ZInput.GetKeyDown(config.DecreaseXKey, false), () => config.Columns--)) return;
-            if (CheckAndApply(() => ZInput.GetKeyDown(config.DecreaseYKey, false), () => config.Rows--)) return;
+            if (CheckAndApply(() => ZInput.GetKeyDown(config.IncreaseXKey, false), () => config.GridSizeA++)) return;
+            if (CheckAndApply(() => ZInput.GetKeyDown(config.IncreaseYKey, false), () => config.GridSizeB++)) return;
+            if (CheckAndApply(() => ZInput.GetKeyDown(config.DecreaseXKey, false), () => config.GridSizeA--)) return;
+            if (CheckAndApply(() => ZInput.GetKeyDown(config.DecreaseYKey, false), () => config.GridSizeB--)) return;
             if (CheckAndApply(() => ZInput.GetKeyDown(config.NextGridKey, false), config.NextGridType)) return;
             if (CheckAndApply(() => ZInput.GetKeyDown(config.PrevGridKey, false), config.PrevGridType)) return;
         }
         else
         {
-            if (CheckAndApply(() => ZInput.GetButtonDown("JoyDPadRight"), () => config.Columns++)) return;
-            if (CheckAndApply(() => ZInput.GetButtonDown("JoyDPadUp"), () => config.Rows++)) return;
-            if (CheckAndApply(() => ZInput.GetButtonDown("JoyDPadLeft"), () => config.Columns--)) return;
-            if (CheckAndApply(() => ZInput.GetButtonDown("JoyDPadDown"), () => config.Rows--)) return;
+            if (CheckAndApply(() => ZInput.GetButtonDown("JoyDPadRight"), () => config.GridSizeA++)) return;
+            if (CheckAndApply(() => ZInput.GetButtonDown("JoyDPadUp"), () => config.GridSizeB++)) return;
+            if (CheckAndApply(() => ZInput.GetButtonDown("JoyDPadLeft"), () => config.GridSizeA--)) return;
+            if (CheckAndApply(() => ZInput.GetButtonDown("JoyDPadDown"), () => config.GridSizeB--)) return;
         }
     }
 

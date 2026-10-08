@@ -276,10 +276,10 @@ internal static class SnapSystem
         Vector3 row = snap.rowDir;
         Vector3 col = snap.colDir;
 
-        if (config.Rows > 1)
+        if (config.GridSizeB > 1)
             row = ChooseDirection(snap.pos, row);
 
-        if (config.Columns > 1)
+        if (config.GridSizeA > 1)
             col = ChooseDirection(snap.pos, col);
 
         RowDirection = row;

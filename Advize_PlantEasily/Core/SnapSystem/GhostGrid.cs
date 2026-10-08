@@ -217,10 +217,10 @@ internal abstract class GhostGrid
 /// </summary>
 internal abstract class GhostArray : GhostGrid
 {
-    internal override int MaxActiveGhosts => Mathf.Min(config.Rows * config.Columns - 1, config.MaxConcurrentPlacements - 1);
+    internal override int MaxActiveGhosts => Mathf.Min(config.GridSizeB * config.GridSizeA - 1, config.MaxConcurrentPlacements - 1);
     protected int TotalCells => 1 + MaxActiveGhosts;
-    protected int ActualRows => (TotalCells + config.Columns - 1) / config.Columns;
-    protected int ActualColumns => Mathf.Min(config.Columns, TotalCells);
+    protected int ActualRows => (TotalCells + config.GridSizeA - 1) / config.GridSizeA;
+    protected int ActualColumns => Mathf.Min(config.GridSizeA, TotalCells);
 
     private static int _lastRows;
     private static int _lastColumns;
@@ -233,9 +233,9 @@ internal abstract class GhostArray : GhostGrid
         Transform rootTransform = rootGhost.transform;
         int index = 0;
 
-        for (int row = 0; row < config.Rows; row++)
+        for (int row = 0; row < config.GridSizeB; row++)
         {
-            for (int column = 0; column < config.Columns; column++)
+            for (int column = 0; column < config.GridSizeA; column++)
             {
                 if (row == 0 && column == 0)
                 {
@@ -286,10 +286,10 @@ internal abstract class GhostArray : GhostGrid
             int ghostIndex = _ghostUpdateIndex % totalGhosts;
             _ghostUpdateIndex++;
 
-            int row = ghostIndex / config.Columns;
-            int column = ghostIndex % config.Columns;
+            int row = ghostIndex / config.GridSizeA;
+            int column = ghostIndex % config.GridSizeA;
 
-            if (row >= config.Rows)
+            if (row >= config.GridSizeB)
                 continue;
 
             UpdatePieceCost(piece, ghostIndex, baseCost);
@@ -322,10 +322,10 @@ internal abstract class GhostArray : GhostGrid
             changed = true;
         }
 
-        if (config.Rows != _lastRows || config.Columns != _lastColumns)
+        if (config.GridSizeB != _lastRows || config.GridSizeA != _lastColumns)
         {
-            _lastRows = config.Rows;
-            _lastColumns = config.Columns;
+            _lastRows = config.GridSizeB;
+            _lastColumns = config.GridSizeA;
             changed = true;
         }
 

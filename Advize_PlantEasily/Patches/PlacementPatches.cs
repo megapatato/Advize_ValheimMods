@@ -47,7 +47,7 @@ static class PlacementPatches
                 return;
 
             //If there are no extra ghosts but there is supposed to be
-            if (GhostGrid.Instance.GhostPlacementStatus.Count == 0 || (GhostGrid.Instance.ExtraGhosts.Count == 0 && !(config.Rows == 1 && config.Columns == 1)))
+            if (GhostGrid.Instance.GhostPlacementStatus.Count == 0 || (GhostGrid.Instance.ExtraGhosts.Count == 0 && !(config.GridSizeB == 1 && config.GridSizeA == 1)))
             {
                 //Dbgl($"Calling Setup from Update. placementCount:{GhostGrid.GhostPlacementStatus.Count}, ghostCount is 0? ({GhostGrid.ExtraGhosts.Count == 0})");
                 __instance.SetupPlacementGhost();
