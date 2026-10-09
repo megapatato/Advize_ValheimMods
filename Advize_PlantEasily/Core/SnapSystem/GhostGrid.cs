@@ -1,7 +1,6 @@
 ﻿namespace Advize_PlantEasily;
 
 using System.Collections.Generic;
-using System.Net;
 using UnityEngine;
 using static ModContext;
 using static PlacementState;
@@ -27,7 +26,11 @@ internal abstract class GhostGrid
     protected string _lastPieceName;
     protected bool _preservePool;
 
+    /// <summary>
+    /// Dicionnary in <c>GhostGrid.Instances</c> allows iteration and child-class resolution.
+    /// </summary>
     public static Dictionary<GridType, GhostGrid> Instances;
+    
     static GhostGrid()
     {
         Instances = new Dictionary<GridType, GhostGrid>()
@@ -38,8 +41,28 @@ internal abstract class GhostGrid
     }
 
     internal abstract int MaxActiveGhosts { get; }
-    protected abstract void InitializeGhosts(GameObject rootGhost);
+
     internal abstract void Update(Player player);
+
+    protected void InitializeGhosts(GameObject rootGhost)
+    {
+        Transform rootTransform = rootGhost.transform;
+
+        SetReferences(rootGhost);
+        GhostPlacementStatus.Add(Status.Healthy);
+
+        for (int i = 0; i < MaxActiveGhosts; i++)
+        {
+            GameObject ghost = ExtraGhosts[i++];
+            ghost.SetActive(true);
+
+            Transform t = ghost.transform;
+            t.position = rootTransform.position;
+            t.localScale = rootTransform.localScale;
+
+            GhostPlacementStatus.Add(Status.Healthy);
+        }
+    }
 
     internal void ResizeGrid()
     {
@@ -217,48 +240,15 @@ internal abstract class GhostGrid
 /// </summary>
 internal abstract class GhostArray : GhostGrid
 {
-    internal override int MaxActiveGhosts => Mathf.Min(config.GridSizeB * config.GridSizeA - 1, config.MaxConcurrentPlacements - 1);
     protected int TotalCells => 1 + MaxActiveGhosts;
-    protected int ActualRows => (TotalCells + config.GridSizeA - 1) / config.GridSizeA;
-    protected int ActualColumns => Mathf.Min(config.GridSizeA, TotalCells);
+    internal abstract int ActualRows { get; }
+    internal abstract int ActualColumns { get; }
 
     private static int _lastRows;
     private static int _lastColumns;
 
     protected abstract void ShowGridDirections();
-    protected abstract Vector3 GetGhostPosition(int row, int column, int index);
-
-    protected override void InitializeGhosts(GameObject rootGhost)
-    {
-        Transform rootTransform = rootGhost.transform;
-        int index = 0;
-
-        for (int row = 0; row < config.GridSizeB; row++)
-        {
-            for (int column = 0; column < config.GridSizeA; column++)
-            {
-                if (row == 0 && column == 0)
-                {
-                    SetReferences(rootGhost);
-
-                    GhostPlacementStatus.Add(Status.Healthy);
-                    continue;
-                }
-
-                if (index >= MaxActiveGhosts)
-                    return;
-
-                GameObject ghost = ExtraGhosts[index++];
-                ghost.SetActive(true);
-
-                Transform t = ghost.transform;
-                t.position = rootTransform.position;
-                t.localScale = rootTransform.localScale;
-
-                GhostPlacementStatus.Add(Status.Healthy);
-            }
-        }
-    }
+    protected abstract Vector3 GetGhostPosition(int index);
 
     internal override void Update(Player player)
     {
@@ -276,7 +266,7 @@ internal abstract class GhostArray : GhostGrid
         UpdateGridVersion();
 
         // Always update root ghost immediately, even though this results in the occasional double update per frame
-        UpdateGhost(player, piece, 0, 0, 0);
+        UpdateGhost(player, piece, 0);
 
         int totalGhosts = 1 + MaxActiveGhosts; // Root + extras
         int updatesThisFrame = Mathf.Min(config.GhostUpdateBatchSize, totalGhosts);
@@ -286,14 +276,11 @@ internal abstract class GhostArray : GhostGrid
             int ghostIndex = _ghostUpdateIndex % totalGhosts;
             _ghostUpdateIndex++;
 
-            int row = ghostIndex / config.GridSizeA;
-            int column = ghostIndex % config.GridSizeA;
-
-            if (row >= config.GridSizeB)
+            if (ghostIndex / config.GridSizeA >= config.GridSizeB)
                 continue;
 
             UpdatePieceCost(piece, ghostIndex, baseCost);
-            UpdateGhost(player, piece, row, column, ghostIndex);
+            UpdateGhost(player, piece, ghostIndex);
         }
 
         UpdatePieceCost(piece, 0, baseCost);
@@ -333,7 +320,7 @@ internal abstract class GhostArray : GhostGrid
             _gridVersion++;
     }
 
-    protected void UpdateGhost(Player player, Piece piece, int row, int column, int index)
+    protected void UpdateGhost(Player player, Piece piece, int index)
     {
         GameObject ghost = GetGhostObject(index);
         GhostCache cache = GetGhostCache(ghost);
@@ -343,7 +330,7 @@ internal abstract class GhostArray : GhostGrid
         if (hasCache && cache.lastUpdatedVersion == _gridVersion)
             return;
 
-        UpdateGhostTransform(ghost, GetGhostPosition(row, column, index));
+        UpdateGhostTransform(ghost, GetGhostPosition(index));
         UpdateGhostStatus(player, piece, ghost, index);
 
         if (hasCache)
@@ -359,6 +346,10 @@ internal sealed class GhostGridRectangular : GhostArray
 {
     public GhostGridRectangular() { }
 
+    internal override int MaxActiveGhosts => Mathf.Min( (config.GridSizeB * config.GridSizeA) - 1, config.MaxConcurrentPlacements - 1);
+    internal override int ActualRows => (TotalCells + config.GridSizeA - 1) / config.GridSizeA;
+    internal override int ActualColumns => Mathf.Min(config.GridSizeA, TotalCells);
+
     protected override void ShowGridDirections()
     {
         DirectionRenderer.SetActive(PlacementGhost.activeSelf);
@@ -370,8 +361,11 @@ internal sealed class GhostGridRectangular : GhostArray
         LineRenderers[2].SetPositions([vertex, vertex + SnapDirection * RowDirection.magnitude]);
     }
 
-    protected override Vector3 GetGhostPosition(int row, int column, int index)
+    protected override Vector3 GetGhostPosition(int index)
     {
+        int row = index / config.GridSizeA;
+        int column = index % config.GridSizeA;
+
         Vector3 pos = index == 0 ? BasePosition : BasePosition + RowDirection * row + ColumnDirection * column;
 
         Heightmap.GetHeight(pos, out float height);
@@ -383,11 +377,19 @@ internal sealed class GhostGridRectangular : GhostArray
 
 
 /// <summary>
-/// Class <c>GhostGridTriangular</c> tiles its ghosts with triangles, generating a semi-rectangular grid with 2 opposite ragged edges along the column axis.
+/// Class <c>GhostGridTriangular</c> tiles its ghosts with triangles, generating a semi-rectangular grid with 2 opposite ragged edges.
 /// </summary>
 internal sealed class GhostGridTriangular : GhostArray
 {
     public GhostGridTriangular() { }
+
+    private int FullRowSize => Mathf.CeilToInt(config.GridSizeA / 2f);
+    private int FullRowNum => (config.GridSizeA % 2 == 0) ? config.GridSizeB : Mathf.CeilToInt(config.GridSizeB / 2f);
+    internal override int MaxActiveGhosts => Mathf.Min(
+        (FullRowNum * FullRowSize) + ((config.GridSizeB - FullRowNum) * (FullRowSize - 1)) - 1,
+        config.MaxConcurrentPlacements - 1);
+    internal override int ActualRows => (config.GridSizeB - 1);
+    internal override int ActualColumns => Mathf.CeilToInt(config.GridSizeA / 2f) - 1;
 
     protected override void ShowGridDirections()
     {
@@ -400,27 +402,31 @@ internal sealed class GhostGridTriangular : GhostArray
         LineRenderers[2].SetPositions([vertex, vertex + SnapDirection * RowDirection.magnitude]);
     }
 
-    protected override Vector3 GetGhostPosition(int row, int column, int index)
+    protected override Vector3 GetGhostPosition(int index)
     {
-        Vector3 row_delta = new(0, 0, 0);
-        Vector3 col_delta = new(0, 0, 0);
+        Vector3 x_offset = new(0, 0, 0);
+        Vector3 y_offset = new(0, 0, 0);
+
+        int row_position = index % config.GridSizeA;    // A denotes positions in both rows & offset rows
+        bool offset_row = row_position >= FullRowSize;  // half, or half-1, fall in an offset row
+        int double_heights = index / config.GridSizeA;  // Y-aligned row starts; each full row is spaced by 2 triangle heights
+
         if (index != 0) {
-            row_delta = RowDirection * Mathf.Sqrt(0.75f) * row;   // height of unit triangle = sqrt(1^2 - 0.5^2)
-            if (row % 2 == 0)
-            {
-                col_delta = ColumnDirection * column;
+            if ( offset_row ) {
+                x_offset = RowDirection * (row_position - FullRowSize + 0.5f);
+                y_offset = ColumnDirection * (double_heights + 0.5f) * 2 * Mathf.Sqrt(0.75f);
             }
-            else
-            {
-                col_delta = ColumnDirection * (column + 0.5f);
+            else {
+                x_offset = RowDirection * row_position;
+                y_offset = ColumnDirection * double_heights * 2 * Mathf.Sqrt(0.75f);    // height of unit triangle = sqrt(1^2 - 0.5^2)
             }
         }
-        Vector3 pos = BasePosition + row_delta + col_delta;
+        Vector3 pos = BasePosition + x_offset + y_offset;
         Heightmap.GetHeight(pos, out float height);
         pos.y = height;
 
         return pos;
-    }
+    }    
 }
 
 
